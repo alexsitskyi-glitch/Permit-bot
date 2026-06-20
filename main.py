@@ -80,7 +80,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if context.args and context.args[0] == "permit":
         keyboard = ReplyKeyboardMarkup(
             [[KeyboardButton("📋  Open Permit Form", web_app=WebAppInfo(url=WEBAPP_URL))]],
-            resize_keyboard=True, one_time_keyboard=True
+            resize_keyboard=False, one_time_keyboard=True
         )
         await update.message.reply_text(
             "🚛 *New Permit Request*\n\nTap the button below to open the form.",
@@ -134,7 +134,7 @@ async def permit(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     keyboard = ReplyKeyboardMarkup(
         [[KeyboardButton("📋  Open Permit Form", web_app=WebAppInfo(url=WEBAPP_URL))]],
-        resize_keyboard=True, one_time_keyboard=True
+        resize_keyboard=False, one_time_keyboard=True
     )
     await update.message.reply_text(
         "🚛 *New Permit Request*\n\nTap the button below to open the form.",
