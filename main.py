@@ -76,48 +76,37 @@ def get_stats():
 # ── /start ────────────────────────────────────────────────────────────────────
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Deep-link from /permit button in a group → open permit form in private chat
+    # Если пришли по ссылке из группы (t.me/your_bot?start=permit)
     if context.args and context.args[0] == "permit":
         keyboard = InlineKeyboardMarkup([[
             InlineKeyboardButton(
-                "🚛 GET PERMIT 🚀",
+                text="🚛 OPEN PERMIT FORM [TEST-V3]", 
                 web_app=WebAppInfo(url=WEBAPP_URL)
             )
         ]])
         await update.message.reply_text(
-            "🚛 *New Permit Request*\n\nTap the button below to open the form.",
+            "🚛 *Permit Request Form Ready*\n\nTap the button below to fill out the application.",
             parse_mode="Markdown",
             reply_markup=keyboard
         )
         return
 
-    # In a group → send inline button that opens welcome.html as WebApp
+    # Если /start вызван внутри группы
     if update.message.chat.type in ("group", "supergroup"):
+        bot_username = (await context.bot.get_me()).username
         keyboard = InlineKeyboardMarkup([[
-            InlineKeyboardButton(
-                "📖 Open OS/OW Guide",
-                web_app=WebAppInfo(url=WELCOME_URL)
-            )
+            InlineKeyboardButton("📋 Open Permit Form", url=f"https://t.me/{bot_username}?start=permit")
         ]])
-        await update.message.reply_text(
-            "👋 *OS/OW Permit Assistant*\n\nTap the button to open the welcome guide.",
-            parse_mode="Markdown",
-            reply_markup=keyboard
-        )
+        await update.message.reply_text("🚛 Tap the button below to open the permit form in private chat.", reply_markup=keyboard)
         return
 
-    # In private chat → same welcome page as WebApp button
+    # Обычный /start в личке
     keyboard = InlineKeyboardMarkup([[
-        InlineKeyboardButton(
-            "📖 Open OS/OW Guide",
-            web_app=WebAppInfo(url=WELCOME_URL)
-        )
+        InlineKeyboardButton("🚛 OPEN PERMIT FORM [TEST-V3]", web_app=WebAppInfo(url=WEBAPP_URL))
     ]])
     await update.message.reply_text(
         "👋 *Hi! I'm your OS/OW Permit Assistant.*\n\n"
-        "📝 Submit a permit request: /permit\n"
-        "❓ Ask about state restrictions: /info\n\n"
-        "Tap below to open the welcome guide.",
+        "Tap the button below to start your permit request.",
         parse_mode="Markdown",
         reply_markup=keyboard
     )
@@ -125,26 +114,19 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ── /permit ───────────────────────────────────────────────────────────────────
 
 async def permit(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not WEBAPP_URL.startswith("https://"):
-        await update.message.reply_text("⚠️ Web App URL is not configured.")
-        return
     if update.message.chat.type in ("group", "supergroup"):
         bot_username = (await context.bot.get_me()).username
         keyboard = InlineKeyboardMarkup([[
-            InlineKeyboardButton("📋  Open Permit Form", url=f"https://t.me/{bot_username}?start=permit")
+            InlineKeyboardButton("📋 Open Permit Form", url=f"https://t.me/{bot_username}?start=permit")
         ]])
         await update.message.reply_text("🚛 Tap the button below to open the permit form.", reply_markup=keyboard)
         return
         
-    # Стабильная инлайн-кнопка для ЛС (работает с 1 тапа на iOS/Android)
     keyboard = InlineKeyboardMarkup([[
-        InlineKeyboardButton(
-            "🚛 GET PERMIT 🚀",
-            web_app=WebAppInfo(url=WEBAPP_URL)
-        )
+        InlineKeyboardButton("🚛 OPEN PERMIT FORM [TEST-V3]", web_app=WebAppInfo(url=WEBAPP_URL))
     ]])
     await update.message.reply_text(
-        "🚛 *New Permit Request*\n\nTap the button below to open the application form:",
+        "🚛 *New Permit Request*\n\nTap the button below to open the form:",
         parse_mode="Markdown",
         reply_markup=keyboard
     )
@@ -202,53 +184,28 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ── Welcome when bot is added to group ───────────────────────────────────────
 
 async def welcome_bot_added(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Welcome message when bot is added to a group."""
     result = update.my_chat_member
-    if result is None:
-        return
+    if result is None: return
 
     old_status = result.old_chat_member.status
     new_status = result.new_chat_member.status
-
     valid_statuses = ("member", "administrator", "creator")
-    was_in = old_status in valid_statuses
-    is_in = new_status in valid_statuses
-
-    if was_in or not is_in:
-        return
+    if old_status in valid_statuses or new_status not in valid_statuses: return
 
     chat = result.chat
-    if chat.type not in ("group", "supergroup"):
-        return
+    if chat.type not in ("group", "supergroup"): return
 
-    log_event(
-        "welcome",
-        result.new_chat_member.user.id,
-        result.new_chat_member.user.username,
-        chat.id,
-        chat.title
-    )
+    log_event("welcome", result.new_chat_member.user.id, result.new_chat_member.user.username, chat.id, chat.title)
 
     keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton(
-            text="📖 Open OS/OW Guide",
-            web_app=WebAppInfo(url=WELCOME_URL)
-        )],
-        [InlineKeyboardButton(
-            text="🚛 GET PERMIT",
-            url=f"https://t.me/{(await context.bot.get_me()).username}?start=permit"
-        )]
+        [InlineKeyboardButton(text="📖 Open OS/OW Guide", web_app=WebAppInfo(url=WELCOME_URL))],
+        [InlineKeyboardButton(text="🚛 GET PERMIT", url=f"https://t.me/{(await context.bot.get_me()).username}?start=permit")]
     ])
 
     await context.bot.send_message(
         chat_id=chat.id,
-        text=(
-            "👋 *OS/OW Permit Bot added successfully!*\n\n"
-            "Telegram does not allow Web Apps to open automatically.\n"
-            "Tap the button below to open the welcome screen and guide."
-        ),
-        parse_mode="Markdown",
-        reply_markup=keyboard
+        text="👋 *OS/OW Permit Bot added successfully!*\n\nTap below to open the guide.",
+        parse_mode="Markdown", reply_markup=keyboard
     )
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -267,7 +224,7 @@ def build_permit_text(data, driver_name, origin):
     return (
         f"🚛  *NEW PERMIT REQUEST*\n{D('═')}\n"
         f"👤  Driver:    {driver_name}\n"
-        f"📍  Group:     {origin}\n{D()}\n"
+        f"📍  group:     {origin}\n{D()}\n"
         f"📦  Commodity: {data.get('commodity','—')}\n{D()}\n"
         f"📐  Width:     {data.get('width','—')}\n"
         f"📐  Height:    {data.get('height','—')}\n"
@@ -285,7 +242,7 @@ async def handle_webapp_data(update: Update, context: ContextTypes.DEFAULT_TYPE)
     try:
         data = json.loads(raw)
     except Exception:
-        await update.message.reply_text("⚠️ Could not read form data. Please try again.")
+        await update.message.reply_text("⚠️ Could not read form data.")
         return
 
     origin = chat.title or "Direct message"
@@ -295,8 +252,7 @@ async def handle_webapp_data(update: Update, context: ContextTypes.DEFAULT_TYPE)
     try:
         await context.bot.send_message(chat_id=PERMITS_GROUP_ID, text=permit_text, parse_mode="Markdown")
     except Exception as e:
-        logging.error(f"Failed to send to permits group {PERMITS_GROUP_ID}: {e}")
-        await update.message.reply_text(f"⚠️ Could not reach the permits group.\nError: {e}")
+        await update.message.reply_text(f"⚠️ Could not reach dispatch.\nError: {e}")
         return
 
     await update.message.reply_text(
@@ -318,26 +274,21 @@ async def ask_dify(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
 
     user_key = f"dify_{update.effective_user.id}"
-    payload  = {"inputs": {}, "query": query_text, "response_mode": "blocking",
-                "user": f"tg_{update.effective_user.id}"}
+    payload  = {"inputs": {}, "query": query_text, "response_mode": "blocking", "user": f"tg_{update.effective_user.id}"}
     if context.bot_data.get(user_key):
         payload["conversation_id"] = context.bot_data[user_key]
 
     try:
         r = await asyncio.to_thread(
             requests.post, DIFY_API_URL, json=payload,
-            headers={"Authorization": f"Bearer {DIFY_API_KEY}", "Content-Type": "application/json"},
-            timeout=60
+            headers={"Authorization": f"Bearer {DIFY_API_KEY}", "Content-Type": "application/json"}, timeout=60
         )
         result = r.json()
         if result.get("conversation_id"):
             context.bot_data[user_key] = result["conversation_id"]
         await update.message.reply_text(result.get("answer") or "⚠️ No answer returned.")
     except Exception as e:
-        logging.error(f"Dify error: {e}")
-        await update.message.reply_text("⚠️ Could not reach AI assistant. Try again later.")
-
-# ── Error handler ─────────────────────────────────────────────────────────────
+        await update.message.reply_text("⚠️ Could not reach AI assistant.")
 
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
     logging.error(f"Error: {context.error}", exc_info=context.error)
@@ -345,10 +296,10 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
 # ── main ──────────────────────────────────────────────────────────────────────
 
 async def _post_init(app):
-    """Сбрасываем меню до дефолтных команд, чтобы полностью убрать забагованную синюю кнопку."""
+    """Сбрасываем меню до стандартных команд."""
     try:
         await app.bot.set_chat_menu_button(menu_button=MenuButtonDefault())
-        logging.info("Menu button reset to Default (Commands) successfully.")
+        logging.info("Menu button reset to Default.")
     except Exception as e:
         logging.error(f"Failed to reset menu button: {e}")
 
@@ -362,13 +313,9 @@ async def main():
     app.add_handler(CommandHandler("setup",  setup))
     app.add_handler(CommandHandler("info",   ask_dify))
     app.add_handler(CommandHandler("stats",  stats))
-
     app.add_handler(ChatMemberHandler(welcome_bot_added, ChatMemberHandler.MY_CHAT_MEMBER))
-
     app.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, handle_webapp_data))
-    app.add_handler(MessageHandler(
-        filters.TEXT & ~filters.COMMAND & filters.ChatType.PRIVATE, ask_dify
-    ))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND & filters.ChatType.PRIVATE, ask_dify))
 
     logging.info("Bot started.")
     async with app:
