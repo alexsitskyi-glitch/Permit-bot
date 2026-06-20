@@ -79,7 +79,6 @@ def get_webapp_keyboard():
     return ReplyKeyboardMarkup(
         [[KeyboardButton(text="🚛 GET PERMIT", web_app=WebAppInfo(url=WEBAPP_URL))]],
         resize_keyboard=True, 
-        persist=True # Она не будет исчезать сама по себе
     )
 
 # ── /start ────────────────────────────────────────────────────────────────────
