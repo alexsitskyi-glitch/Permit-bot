@@ -2,7 +2,7 @@ import os, json, logging, requests, asyncio, sqlite3
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from telegram import Update, WebAppInfo, ReplyKeyboardRemove, KeyboardButton, \
-    ReplyKeyboardMarkup, InlineKeyboardMarkup, InlineKeyboardButton, MenuButtonWebApp
+    ReplyKeyboardMarkup, InlineKeyboardMarkup, InlineKeyboardButton, MenuButtonDefault
 from telegram.ext import (
     Application, CommandHandler, MessageHandler,
     filters, ContextTypes, ChatMemberHandler
@@ -78,10 +78,16 @@ def get_stats():
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Deep-link from /permit button in a group → open permit form in private chat
     if context.args and context.args[0] == "permit":
+        keyboard = InlineKeyboardMarkup([[
+            InlineKeyboardButton(
+                "🚛 GET PERMIT 🚀",
+                web_app=WebAppInfo(url=WEBAPP_URL)
+            )
+        ]])
         await update.message.reply_text(
-            "🚛 *New Permit Request*\n\nTap the *GET PERMIT* button ↙️ below to open the form.",
+            "🚛 *New Permit Request*\n\nTap the button below to open the form.",
             parse_mode="Markdown",
-            reply_markup=ReplyKeyboardRemove()
+            reply_markup=keyboard
         )
         return
 
@@ -129,10 +135,18 @@ async def permit(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ]])
         await update.message.reply_text("🚛 Tap the button below to open the permit form.", reply_markup=keyboard)
         return
+        
+    # Стабильная инлайн-кнопка для ЛС (работает с 1 тапа на iOS/Android)
+    keyboard = InlineKeyboardMarkup([[
+        InlineKeyboardButton(
+            "🚛 GET PERMIT 🚀",
+            web_app=WebAppInfo(url=WEBAPP_URL)
+        )
+    ]])
     await update.message.reply_text(
-        "🚛 *New Permit Request*\n\nTap the *GET PERMIT* button ↙️ below to open the form.",
+        "🚛 *New Permit Request*\n\nTap the button below to open the application form:",
         parse_mode="Markdown",
-        reply_markup=ReplyKeyboardRemove()
+        reply_markup=keyboard
     )
 
 # ── /setup ────────────────────────────────────────────────────────────────────
@@ -186,7 +200,6 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 # ── Welcome when bot is added to group ───────────────────────────────────────
-
 
 async def welcome_bot_added(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Welcome message when bot is added to a group."""
@@ -332,17 +345,12 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
 # ── main ──────────────────────────────────────────────────────────────────────
 
 async def _post_init(app):
-    """Set the bot menu button globally — opens permit form WebApp on first tap."""
+    """Сбрасываем меню до дефолтных команд, чтобы полностью убрать забагованную синюю кнопку."""
     try:
-        await app.bot.set_chat_menu_button(
-            menu_button=MenuButtonWebApp(
-                text="🚛 GET PERMIT",
-                web_app=WebAppInfo(url=WEBAPP_URL)
-            )
-        )
-        logging.info("Menu button set → GET PERMIT opens permit form")
+        await app.bot.set_chat_menu_button(menu_button=MenuButtonDefault())
+        logging.info("Menu button reset to Default (Commands) successfully.")
     except Exception as e:
-        logging.error(f"Failed to set menu button: {e}")
+        logging.error(f"Failed to reset menu button: {e}")
 
 async def main():
     init_db()
@@ -355,7 +363,6 @@ async def main():
     app.add_handler(CommandHandler("info",   ask_dify))
     app.add_handler(CommandHandler("stats",  stats))
 
-    # ← KEY FIX: ChatMemberHandler tracks bot being added/removed from groups
     app.add_handler(ChatMemberHandler(welcome_bot_added, ChatMemberHandler.MY_CHAT_MEMBER))
 
     app.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, handle_webapp_data))
@@ -367,7 +374,6 @@ async def main():
     async with app:
         await app.initialize()
         await app.start()
-        # ← KEY FIX: explicitly request my_chat_member updates
         await app.updater.start_polling(allowed_updates=Update.ALL_TYPES)
         await asyncio.Event().wait()
 
