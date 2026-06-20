@@ -2,7 +2,7 @@ import os, json, logging, requests, asyncio, sqlite3
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from telegram import Update, WebAppInfo, ReplyKeyboardRemove, KeyboardButton, \
-    ReplyKeyboardMarkup, InlineKeyboardMarkup, InlineKeyboardButton
+    ReplyKeyboardMarkup, InlineKeyboardMarkup, InlineKeyboardButton, MenuButtonWebApp
 from telegram.ext import (
     Application, CommandHandler, MessageHandler,
     filters, ContextTypes, ChatMemberHandler
@@ -78,13 +78,10 @@ def get_stats():
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Deep-link from /permit button in a group → open permit form in private chat
     if context.args and context.args[0] == "permit":
-        keyboard = ReplyKeyboardMarkup(
-            [[KeyboardButton("📋  Open Permit Form", web_app=WebAppInfo(url=WEBAPP_URL))]],
-            resize_keyboard=False, one_time_keyboard=True
-        )
         await update.message.reply_text(
-            "🚛 *New Permit Request*\n\nTap the button below to open the form.",
-            parse_mode="Markdown", reply_markup=keyboard
+            "🚛 *New Permit Request*\n\nTap the *GET PERMIT* button ↙️ below to open the form.",
+            parse_mode="Markdown",
+            reply_markup=ReplyKeyboardRemove()
         )
         return
 
@@ -132,13 +129,10 @@ async def permit(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ]])
         await update.message.reply_text("🚛 Tap the button below to open the permit form.", reply_markup=keyboard)
         return
-    keyboard = ReplyKeyboardMarkup(
-        [[KeyboardButton("📋  Open Permit Form", web_app=WebAppInfo(url=WEBAPP_URL))]],
-        resize_keyboard=False, one_time_keyboard=True
-    )
     await update.message.reply_text(
-        "🚛 *New Permit Request*\n\nTap the button below to open the form.",
-        parse_mode="Markdown", reply_markup=keyboard
+        "🚛 *New Permit Request*\n\nTap the *GET PERMIT* button ↙️ below to open the form.",
+        parse_mode="Markdown",
+        reply_markup=ReplyKeyboardRemove()
     )
 
 # ── /setup ────────────────────────────────────────────────────────────────────
@@ -337,9 +331,22 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
 
 # ── main ──────────────────────────────────────────────────────────────────────
 
+async def _post_init(app):
+    """Set the bot menu button globally — opens permit form WebApp on first tap."""
+    try:
+        await app.bot.set_chat_menu_button(
+            menu_button=MenuButtonWebApp(
+                text="🚛 GET PERMIT",
+                web_app=WebAppInfo(url=WEBAPP_URL)
+            )
+        )
+        logging.info("Menu button set → GET PERMIT opens permit form")
+    except Exception as e:
+        logging.error(f"Failed to set menu button: {e}")
+
 async def main():
     init_db()
-    app = Application.builder().token(TOKEN).build()
+    app = Application.builder().token(TOKEN).post_init(_post_init).build()
     app.add_error_handler(error_handler)
 
     app.add_handler(CommandHandler("start",  start))
