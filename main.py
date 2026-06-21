@@ -93,8 +93,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if update.message.chat.type in ("group", "supergroup"):
+        bot_username = (await context.bot.get_me()).username
+
         guide_keyboard = InlineKeyboardMarkup([[
-            InlineKeyboardButton("📖 Open OS/OW Guide", web_app=WebAppInfo(url=WELCOME_URL))
+            InlineKeyboardButton("📖 Open OS/OW Guide", url=f"https://t.me/{bot_username}?start=guide")
         ]])
         await update.message.reply_text(
             "👋 *OS/OW Permit Bot*\n\nTap below for a quick guide on how everything works 👇",
@@ -102,11 +104,21 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=guide_keyboard
         )
 
-        bot_username = (await context.bot.get_me()).username
         keyboard = InlineKeyboardMarkup([[
             InlineKeyboardButton("📋 Open Permit Form", url=f"https://t.me/{bot_username}?start=permit")
         ]])
         await update.message.reply_text("🚛 Tap below to open the permit form in private chat.", reply_markup=keyboard)
+        return
+
+    if context.args and context.args[0] == "guide":
+        guide_keyboard = InlineKeyboardMarkup([[
+            InlineKeyboardButton("📖 Open OS/OW Guide", web_app=WebAppInfo(url=WELCOME_URL))
+        ]])
+        await update.message.reply_text(
+            "👋 *Welcome to the OS/OW Permit Bot!*\n\nTap below for a quick guide on how everything works 👇",
+            parse_mode="Markdown",
+            reply_markup=guide_keyboard
+        )
         return
 
     # Plain /start in private chat → show the Quick Guide (welcome.html) first
