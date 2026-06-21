@@ -100,6 +100,16 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("🚛 Tap below to open the permit form in private chat.", reply_markup=keyboard)
         return
 
+    # Plain /start in private chat → show the Quick Guide (welcome.html) first
+    guide_keyboard = InlineKeyboardMarkup([[
+        InlineKeyboardButton("📖 Open OS/OW Guide", web_app=WebAppInfo(url=WELCOME_URL))
+    ]])
+    await update.message.reply_text(
+        "👋 *Welcome to the OS/OW Permit Bot!*\n\nTap below for a quick guide on how everything works 👇",
+        parse_mode="Markdown",
+        reply_markup=guide_keyboard
+    )
+
     await update.message.reply_text(
         "👋 *Hi! I'm your OS/OW Permit Assistant.*\n\n"
         "🚛 To submit a permit: Tap the big **[ 🚛 GET PERMIT ]** button at the bottom.\n"
@@ -217,8 +227,9 @@ def build_permit_text(data, driver_name, origin):
             wb += f"\n{D()}\n⚖️  Gross:  *{data['gross']}*"
     return (
         f"🚛  *NEW PERMIT REQUEST*\n{D('═')}\n"
-        f"👤  Driver:    {driver_name}\n"
+        f"👤  Requested by: {driver_name}\n"
         f"📍  Group:     {origin}\n{D()}\n"
+        f"🔢  Truck #:   {data.get('truck_number','—')}\n{D()}\n"
         f"📦  Commodity: {data.get('commodity','—')}\n{D()}\n"
         f"📐  Width:     {data.get('width','—')}\n"
         f"📐  Height:    {data.get('height','—')}\n"
