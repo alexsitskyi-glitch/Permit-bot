@@ -93,6 +93,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if update.message.chat.type in ("group", "supergroup"):
+        guide_keyboard = InlineKeyboardMarkup([[
+            InlineKeyboardButton("📖 Open OS/OW Guide", web_app=WebAppInfo(url=WELCOME_URL))
+        ]])
+        await update.message.reply_text(
+            "👋 *OS/OW Permit Bot*\n\nTap below for a quick guide on how everything works 👇",
+            parse_mode="Markdown",
+            reply_markup=guide_keyboard
+        )
+
         bot_username = (await context.bot.get_me()).username
         keyboard = InlineKeyboardMarkup([[
             InlineKeyboardButton("📋 Open Permit Form", url=f"https://t.me/{bot_username}?start=permit")
@@ -284,6 +293,9 @@ async def ask_dify(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if context.bot_data.get(user_key):
         payload["conversation_id"] = context.bot_data[user_key]
 
+    is_private = update.effective_chat.type == "private"
+    kb = get_webapp_keyboard() if is_private else None
+
     try:
         r = await asyncio.to_thread(
             requests.post, DIFY_API_URL, json=payload,
@@ -292,9 +304,10 @@ async def ask_dify(update: Update, context: ContextTypes.DEFAULT_TYPE):
         result = r.json()
         if result.get("conversation_id"):
             context.bot_data[user_key] = result["conversation_id"]
-        await update.message.reply_text(result.get("answer") or "⚠️ No answer returned.", reply_markup=get_webapp_keyboard())
+        await update.message.reply_text(result.get("answer") or "⚠️ No answer returned.", reply_markup=kb)
     except Exception as e:
-        await update.message.reply_text("⚠️ Could not reach AI assistant.", reply_markup=get_webapp_keyboard())
+        logging.error(f"ask_dify error: {e}")
+        await update.message.reply_text("⚠️ Could not reach AI assistant.", reply_markup=kb)
 
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
     logging.error(f"Error: {context.error}", exc_info=context.error)
